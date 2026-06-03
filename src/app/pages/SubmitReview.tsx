@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Star, Send } from 'lucide-react';
+import { Star, Send, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { SuccessModal } from '../components/SuccessModal';
 import { toast } from 'sonner';
 
 export default function SubmitReview() {
@@ -31,6 +32,7 @@ export default function SubmitReview() {
 
   const [platformRating, setPlatformRating] = useState(0);
   const [platformComment, setPlatformComment] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   if (!user) {
     navigate('/auth/login');
@@ -82,8 +84,7 @@ export default function SubmitReview() {
       return;
     }
 
-    toast.success('Reviews submitted successfully!');
-    navigate('/dashboard');
+    setShowSuccessModal(true);
   };
 
   return (
@@ -218,6 +219,36 @@ export default function SubmitReview() {
           </Button>
         </div>
       </form>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <SuccessModal
+          title="Review Submitted Successfully"
+          message="Thank you for your feedback! Your review has been submitted and will help improve our platform and community."
+          icon={<CheckCircle className="w-8 h-8 text-green-600" />}
+          accentColor="green"
+          actions={[
+            {
+              label: 'Go to Dashboard',
+              onClick: () => {
+                setShowSuccessModal(false);
+                navigate('/dashboard');
+              },
+            },
+            {
+              label: 'View Profile',
+              onClick: () => {
+                setShowSuccessModal(false);
+                navigate('/profile');
+              },
+            },
+          ]}
+          onClose={() => {
+            setShowSuccessModal(false);
+            navigate('/dashboard');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { mockUsers, mockNotifications } from '../data/mockData';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: string) => Promise<boolean>;
-  register: (email: string, password: string, name: string, role: 'freelancer' | 'customer') => Promise<boolean>;
+  register: (email: string, password: string, name: string, role: 'freelancer' | 'customer' | 'admin') => Promise<boolean>;
   logout: () => void;
   updateProfile: (updates: Partial<User>) => void;
   notifications: Notification[];
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email: string,
     password: string,
     name: string,
-    role: 'freelancer' | 'customer'
+    role: 'freelancer' | 'customer' | 'admin'
   ): Promise<boolean> => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));

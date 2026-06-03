@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { SuccessModal } from '../components/SuccessModal';
 import {
   DollarSign,
   TrendingUp,
@@ -21,6 +22,7 @@ export default function Payments() {
   const { user } = useAuth();
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
   const [filterStatus, setFilterStatus] = useState<TransactionStatus | 'all'>('all');
 
   if (!user) return null;
@@ -134,7 +136,10 @@ export default function Payments() {
               Make Payment
             </button>
           )}
-          <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition">
+          <button
+            onClick={() => setShowDownloadSuccess(true)}
+            className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition"
+          >
             <Download className="w-5 h-5" />
             Download Statement
           </button>
@@ -184,6 +189,17 @@ export default function Payments() {
       )}
       {showPaymentModal && (
         <PaymentModal onClose={() => setShowPaymentModal(false)} />
+      )}
+      {showDownloadSuccess && (
+        <SuccessModal
+          title="Statement Downloaded"
+          message="Your transaction statement has been successfully downloaded. You can find it in your Downloads folder."
+          accentColor="green"
+          onClose={() => setShowDownloadSuccess(false)}
+          actions={[
+            { label: 'Done', onClick: () => setShowDownloadSuccess(false) },
+          ]}
+        />
       )}
     </div>
   );
@@ -294,12 +310,32 @@ function WithdrawModal({
 }) {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('bank');
+  const [success, setSuccess] = useState(false);
+
+  const methodLabel: Record<string, string> = {
+    bank: 'Bank Transfer',
+    paypal: 'PayPal',
+    stripe: 'Stripe',
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Withdrawal of $${amount} initiated! (This is a demo)`);
-    onClose();
+    setSuccess(true);
   };
+
+  if (success) {
+    return (
+      <SuccessModal
+        title="Withdrawal Initiated!"
+        message={`$${parseFloat(amount).toFixed(2)} withdrawal via ${methodLabel[method]} has been successfully submitted. Funds will arrive within 1-3 business days.`}
+        accentColor="indigo"
+        onClose={onClose}
+        actions={[
+          { label: 'Back to Payments', onClick: onClose },
+        ]}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -380,12 +416,33 @@ function PaymentModal({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [projectId, setProjectId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [success, setSuccess] = useState(false);
+
+  const methodLabel: Record<string, string> = {
+    card: 'Credit/Debit Card',
+    paypal: 'PayPal',
+    bank: 'Bank Transfer',
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Payment of $${amount} initiated! Funds held in escrow. (This is a demo)`);
-    onClose();
+    setSuccess(true);
   };
+
+  if (success) {
+    return (
+      <SuccessModal
+        title="Payment Successful!"
+        message={`$${parseFloat(amount).toFixed(2)} has been securely placed in escrow via ${methodLabel[paymentMethod]}. Funds will be released to the freelancer upon project completion.`}
+        accentColor="green"
+        onClose={onClose}
+        actions={[
+          { label: 'View Transaction History', onClick: onClose },
+          { label: 'Close', onClick: onClose, variant: 'secondary' },
+        ]}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -477,6 +534,7 @@ function PaymentModal({ onClose }: { onClose: () => void }) {
 
 function AdminPaymentPanel() {
   const [filterStatus, setFilterStatus] = useState<TransactionStatus | 'all'>('all');
+  const [disputeResolved, setDisputeResolved] = useState<string | null>(null);
 
   const filteredTransactions = mockTransactions
     .filter((t) => filterStatus === 'all' || t.status === filterStatus)
@@ -489,12 +547,21 @@ function AdminPaymentPanel() {
   const disputedTransactions = mockTransactions.filter((t) => t.status === 'disputed');
   const pendingTransactions = mockTransactions.filter((t) => t.status === 'pending');
 
-  const handleResolveDispute = (transactionId: string) => {
-    alert(`Dispute resolved for transaction ${transactionId} (This is a demo)`);
+  const handleResolveDispute = (_transactionId: string, action: string) => {
+    setDisputeResolved(action);
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {disputeResolved && (
+        <SuccessModal
+          title="Dispute Resolved"
+          message={`Action taken: "${disputeResolved}". Both parties have been notified and the transaction has been updated accordingly.`}
+          accentColor="green"
+          onClose={() => setDisputeResolved(null)}
+          actions={[{ label: 'Done', onClick: () => setDisputeResolved(null) }]}
+        />
+      )}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <Shield className="w-8 h-8 text-indigo-600" />
@@ -585,19 +652,19 @@ function AdminPaymentPanel() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleResolveDispute(transaction.id)}
+                    onClick={() => handleResolveDispute(transaction.id, 'Resolved in Favor of Freelancer')}
                     className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm"
                   >
                     Resolve in Favor of Freelancer
                   </button>
                   <button
-                    onClick={() => handleResolveDispute(transaction.id)}
+                    onClick={() => handleResolveDispute(transaction.id, 'Customer Refund Issued')}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
                   >
                     Refund Customer
                   </button>
                   <button
-                    onClick={() => handleResolveDispute(transaction.id)}
+                    onClick={() => handleResolveDispute(transaction.id, 'More Information Requested')}
                     className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition text-sm"
                   >
                     Request More Info

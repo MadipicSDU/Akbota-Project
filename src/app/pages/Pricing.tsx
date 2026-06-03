@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
-import { Check, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
+import { Check, Sparkles, Crown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { SuccessModal } from '../components/SuccessModal';
+import { useAuth } from '../contexts/AuthContext';
 
 type PlanType = 'freelancer' | 'company';
 
@@ -118,8 +120,21 @@ const companyPlans: Plan[] = [
 
 export default function Pricing() {
   const [planType, setPlanType] = useState<PlanType>('freelancer');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string>('');
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const plans = planType === 'freelancer' ? freelancerPlans : companyPlans;
+
+  const handlePlanSelect = (planName: string) => {
+    if (!user) {
+      navigate('/auth/register');
+      return;
+    }
+    setSelectedPlan(planName);
+    setShowSuccessModal(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
@@ -203,19 +218,27 @@ export default function Pricing() {
                 </div>
 
                 {/* CTA */}
-                <Button
-                  asChild
-                  className={`w-full mb-8 ${
-                    plan.popular
-                      ? 'bg-indigo-600 hover:bg-indigo-700'
-                      : 'bg-gray-900 hover:bg-gray-800'
-                  }`}
-                  size="lg"
-                >
-                  <Link to={plan.name === 'Enterprise' ? '/contact' : '/register'}>
+                {plan.name === 'Enterprise' ? (
+                  <Button
+                    asChild
+                    className="w-full mb-8 bg-gray-900 hover:bg-gray-800"
+                    size="lg"
+                  >
+                    <Link to="/contact">{plan.cta}</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handlePlanSelect(plan.name)}
+                    className={`w-full mb-8 ${
+                      plan.popular
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : 'bg-gray-900 hover:bg-gray-800'
+                    }`}
+                    size="lg"
+                  >
                     {plan.cta}
-                  </Link>
-                </Button>
+                  </Button>
+                )}
 
                 {/* Features */}
                 <div className="space-y-3">
@@ -247,6 +270,33 @@ export default function Pricing() {
           </Button>
         </div>
       </div>
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <SuccessModal
+          title="Plan Successfully Activated"
+          message={`Your ${selectedPlan} plan has been activated successfully. You now have access to all premium features included in your plan.`}
+          icon={<Crown className="w-8 h-8 text-indigo-600" />}
+          accentColor="indigo"
+          actions={[
+            {
+              label: 'Go to Dashboard',
+              onClick: () => {
+                setShowSuccessModal(false);
+                navigate('/');
+              },
+            },
+            {
+              label: 'View Profile',
+              onClick: () => {
+                setShowSuccessModal(false);
+                navigate('/profile');
+              },
+            },
+          ]}
+          onClose={() => setShowSuccessModal(false)}
+        />
+      )}
     </div>
   );
 }

@@ -14,8 +14,11 @@ import {
   FileText,
   ExternalLink,
   MessageSquare,
+  Briefcase,
+  Upload,
 } from 'lucide-react';
 import { mockProjects, mockApplications } from '../data/mockData';
+import { SuccessModal } from '../components/SuccessModal';
 
 export default function ProjectDetails() {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +29,13 @@ export default function ProjectDetails() {
     coverLetter: '',
     proposedRate: '',
     estimatedDuration: '',
+    attachmentName: '',
   });
+  const [showAppSuccess, setShowAppSuccess] = useState(false);
+  const [showAcceptSuccess, setShowAcceptSuccess] = useState(false);
+  const [showRejectSuccess, setShowRejectSuccess] = useState(false);
+  const [showDownloadSuccess, setShowDownloadSuccess] = useState<string | null>(null);
+  const [draggingAttachment, setDraggingAttachment] = useState(false);
 
   const project = mockProjects.find((p) => p.id === id);
   const projectApplications = mockApplications.filter((a) => a.projectId === id);
@@ -48,21 +57,73 @@ export default function ProjectDetails() {
 
   const handleApplicationSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Application submitted! (This is a demo - in production, this would save to the database)');
     setShowApplicationForm(false);
-    setApplicationData({ coverLetter: '', proposedRate: '', estimatedDuration: '' });
+    setShowAppSuccess(true);
+    setApplicationData({ coverLetter: '', proposedRate: '', estimatedDuration: '', attachmentName: '' });
   };
 
-  const handleAcceptApplication = (applicationId: string) => {
-    alert('Application accepted! (This is a demo)');
+  const handleAcceptApplication = (_applicationId: string) => {
+    setShowAcceptSuccess(true);
   };
 
-  const handleRejectApplication = (applicationId: string) => {
-    alert('Application rejected! (This is a demo)');
+  const handleRejectApplication = (_applicationId: string) => {
+    setShowRejectSuccess(true);
+  };
+
+  const handleDownload = (name: string) => {
+    setShowDownloadSuccess(name);
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {showAppSuccess && (
+        <SuccessModal
+          title="Application Submitted!"
+          message={`Your application for "${project?.title}" has been successfully sent to the client. You'll be notified once they review it.`}
+          accentColor="indigo"
+          onClose={() => setShowAppSuccess(false)}
+          actions={[
+            { label: 'Track Application Status', onClick: () => { setShowAppSuccess(false); navigate('/dashboard'); } },
+            { label: 'Back to Projects', onClick: () => { setShowAppSuccess(false); navigate('/projects'); }, variant: 'secondary' },
+            { label: 'Stay on This Page', onClick: () => setShowAppSuccess(false), variant: 'ghost' },
+          ]}
+        />
+      )}
+      {showAcceptSuccess && (
+        <SuccessModal
+          title="Application Accepted"
+          message="The freelancer has been notified. A contract will be initiated and funds will be held in escrow."
+          accentColor="green"
+          onClose={() => setShowAcceptSuccess(false)}
+          actions={[
+            { label: 'Go to Dashboard', onClick: () => { setShowAcceptSuccess(false); navigate('/dashboard'); } },
+            { label: 'Stay Here', onClick: () => setShowAcceptSuccess(false), variant: 'secondary' },
+          ]}
+        />
+      )}
+      {showRejectSuccess && (
+        <SuccessModal
+          title="Application Declined"
+          message="The applicant has been notified. You can continue reviewing other applications."
+          accentColor="blue"
+          onClose={() => setShowRejectSuccess(false)}
+          actions={[
+            { label: 'Continue Reviewing', onClick: () => setShowRejectSuccess(false) },
+          ]}
+        />
+      )}
+      {showDownloadSuccess && (
+        <SuccessModal
+          title="Download Successful"
+          message={`"${showDownloadSuccess}" has been downloaded to your device.`}
+          accentColor="green"
+          onClose={() => setShowDownloadSuccess(null)}
+          actions={[
+            { label: 'Done', onClick: () => setShowDownloadSuccess(null) },
+          ]}
+        />
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
@@ -176,6 +237,44 @@ export default function ProjectDetails() {
                           placeholder="e.g., 2 weeks"
                           required
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Supporting File <span className="text-gray-400 text-xs">(optional)</span>
+                        </label>
+                        <div
+                          onDragOver={(e) => { e.preventDefault(); setDraggingAttachment(true); }}
+                          onDragLeave={() => setDraggingAttachment(false)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDraggingAttachment(false);
+                            const f = e.dataTransfer.files?.[0];
+                            if (f) setApplicationData((prev) => ({ ...prev, attachmentName: f.name }));
+                          }}
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = '.pdf,.doc,.docx,.zip,.png,.jpg';
+                            input.onchange = (ev) => {
+                              const f = (ev.target as HTMLInputElement).files?.[0];
+                              if (f) setApplicationData((prev) => ({ ...prev, attachmentName: f.name }));
+                            };
+                            input.click();
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition text-sm ${
+                            draggingAttachment
+                              ? 'border-indigo-500 bg-indigo-50'
+                              : applicationData.attachmentName
+                              ? 'border-green-400 bg-green-50'
+                              : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Upload className={`w-4 h-4 shrink-0 ${applicationData.attachmentName ? 'text-green-500' : 'text-gray-400'}`} />
+                          <span className={applicationData.attachmentName ? 'text-gray-900 truncate' : 'text-gray-400'}>
+                            {applicationData.attachmentName || (draggingAttachment ? 'Drop file here' : 'Click or drag to attach a file')}
+                          </span>
+                          {applicationData.attachmentName && <CheckCircle className="w-4 h-4 text-green-500 ml-auto shrink-0" />}
+                        </div>
                       </div>
                       <div className="flex gap-3">
                         <button
@@ -337,15 +436,13 @@ export default function ProjectDetails() {
                           </div>
                         </div>
                       </div>
-                      <a
-                        href={deliverable.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => handleDownload(deliverable.name)}
                         className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm"
                       >
                         <Download className="w-4 h-4" />
                         {deliverable.type === 'link' ? 'Open' : 'Download'}
-                      </a>
+                      </button>
                     </div>
                   </div>
                 ))}
